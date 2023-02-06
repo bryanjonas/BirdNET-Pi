@@ -1,18 +1,33 @@
+#!/usr/bin/env bash
+# Creates birdnet.conf for access external to containers
+set -x # Uncomment to enable debugging
+set -e
+trap 'exit 1' SIGINT SIGHUP
+
+echo "Beginning $0"
+birdnet_conf=./config/birdnet.conf
+home="/home/birdie"
+site_name="BirdNET"
+
+install_config() {
+  cat << EOF > $birdnet_conf
 ################################################################################
 #                    Configuration settings for BirdNET-Pi                     #
 ################################################################################
 
-# Site Name - Optional
+# Optional: Site Title for banner
 
-SITE_NAME=""
-
+SITE_NAME=$site_name
 
 #--------------------- Required: Latitude, and Longitude ----------------------#
 
+## The shell substitution below guesses these based on your network. THESE NEED
+## TO BE CHANGED TO STATIC VALUES
 ## Please only go to 4 decimal places. Example:43.3984
 
-LATITUDE=
-LONGITUDE=
+
+LATITUDE=$(curl -s4 ifconfig.co/json | jq .latitude)
+LONGITUDE=$(curl -s4 ifconfig.co/json | jq .longitude)
 
 #---------------------  BirdWeather Station Information -----------------------#
 #_____________The variable below can be set to have your BirdNET-Pi____________#
@@ -72,8 +87,8 @@ APPRISE_NOTIFY_NEW_SPECIES_EACH_DAY=0
 APPRISE_MINIMUM_SECONDS_BETWEEN_NOTIFICATIONS_PER_SPECIES=0
 
 #----------------------  Flickr Images API Configuration -----------------------#
-## If FLICKR_API_KEY is set, the web interface will try and display bird images
-## for each detection. If FLICKR_FILTER_EMAIL is set, the images will only be
+## If FLICKR_API_KEY is set, the web interface will try and display bird images 
+## for each detection. If FLICKR_FILTER_EMAIL is set, the images will only be 
 ## displayed from a particular Flickr user (e.g. yourself).
 
 FLICKR_API_KEY=
@@ -83,11 +98,13 @@ FLICKR_FILTER_EMAIL=
 #--------------------------------  Defaults  ----------------------------------#
 ################################################################################
 
+CONFIG_DIR=$home/BirdNET-Pi/config
+
 ## RECS_DIR is the location birdnet_analysis.service will look for the data-set
 ## it needs to analyze. Be sure this directory is readable and writable for
 ## the BIRDNET_USER.
 
-RECS_DIR=/home/birdie/BirdSongs
+RECS_DIR=$home/BirdSongs
 
 ## REC_CARD is the sound card you would want the birdnet_recording.service to
 ## use. Leave this as "default" to use PulseAudio (recommended), or use
@@ -99,11 +116,11 @@ REC_CARD=default
 ## after extractions have been made from them. This includes both WAVE and
 ## BirdNET.selection.txt files.
 
-PROCESSED=${RECS_DIR}/Processed
+PROCESSED=$home/BirdSongs/Processed
 
 ## EXTRACTED is the directory where the extracted audio selections are moved.
 
-EXTRACTED=${RECS_DIR}/Extracted
+EXTRACTED=$home/BirdSongs/Extracted
 
 ## OVERLAP is the value in seconds which BirdNET should use when analyzing
 ## the data. The values must be between 0.0-2.9.
@@ -132,7 +149,7 @@ FREQSHIFT_HI=6000
 ## FREQSHIFT_LO
 FREQSHIFT_LO=3000
 
-## If the tool is sox, you have to define the pitch shift (amount of 100ths of semitone)
+## If the tool is sox, you have to define the pitch shift (amount of 100ths of semintone)
 ## FREQSHIFT_PITCH
 FREQSHIFT_PITCH=-1500
 
@@ -178,9 +195,14 @@ EXTRACTION_LENGTH=
 
 AUDIOFMT=mp3
 
-## DATABASE_LANG is used to set the language for the database
-
+## DATABASE_LANG is the language used for the bird species database
 DATABASE_LANG=en
+
+## HEARTBEAT_URL is a location to ping every time some analysis is done
+## no information is sent to the the URL, its a heart beat to show that the
+## analysis is continuing
+
+HEARTBEAT_URL=
 
 ## SILENCE_UPDATE_INDICATOR is for quieting the display of how many commits
 ## your installation is behind by, relative to the Github repo. This number
@@ -188,13 +210,14 @@ DATABASE_LANG=en
 
 SILENCE_UPDATE_INDICATOR=0
 
-## HEARTBEAT_URL is a location to ping every time some analysis is done
-## no information is sent to the the URL, it is a heart beat to show that the
-## analysis is continuing
-
-HEARTBEAT_URL=
-
 ## These are just for debugging
 LAST_RUN=
 THIS_RUN=
-IDFILE=birdnet/IdentifiedSoFar.txt
+IDFILE=$home/BirdNET-Pi/IdentifiedSoFar.txt
+EOF
+}
+
+# Checks for a birdnet.conf file
+if ! [ -f ${birdnet_conf} ];then
+  install_config
+fi

@@ -1,0 +1,71 @@
+version: "3.3"
+
+services:
+  birdnet-analysis:
+    image: birdnet:test
+    command: /bin/bash /home/birdie/BirdNET-Pi/scripts/birdnet_analysis_docker.sh
+    depends_on: 
+      - birdnet-server
+    volumes_from: 
+      - birdnet-server
+    networks:
+      - birdnet
+
+  birdnet-server:
+    image: birdnet:test
+    command: bash -c "source /home/birdie/BirdNET-Pi/birdnet/bin/activate && python /home/birdie/BirdNET-Pi/scripts/server_docker.py"
+    volumes: 
+      - ./birdnet.conf:/home/birdie/BirdNET-Pi/config/birdnet.conf
+      - ./config:/home/birdie/BirdNET-Pi/config
+      - birdnet-recs:/home/birdie/BirdSongs
+      - ./scripts:/home/birdie/BirdNET-Pi/scripts
+    networks:
+      - birdnet
+
+  birdnet-extraction:
+    image: birdnet:test
+    command: bash -c "while true;do /home/birdie/BirdNET-Pi/scripts/extract_new_birdsounds_docker.sh;sleep 3;done"
+    depends_on:
+      - birdnet-server
+    volumes_from:
+      - birdnet-server
+    networks:
+      - birdnet
+
+  birdnet-recording:
+    image: birdnet:test
+    command: /bin/bash /home/birdie/BirdNET-Pi/scripts/birdnet_recording_docker.sh
+    depends_on:
+      - birdnet-server
+    volumes_from:
+      - birdnet-server
+    networks:
+      - birdnet
+
+  birdnet-stats-service:
+    image: birdnet:test
+    command: bash -c '/home/birdie/BirdNET-Pi/birdnet/bin/streamlit run /home/birdie/BirdNET-Pi/scripts/plotly_streamlit.py --browser.gatherUsageStats false --server.address localhost --server.baseUrlPath "/stats"'
+    depends_on:
+      - birdnet-server
+    volumes_from:
+      - birdnet-server    
+    networks:
+      - birdnet
+
+  #birdnet-spectrogram:
+  #  image: birdnet:test
+  #  command: bash -c "/home/birdie/BirdNET-Pi/scripts/spectrogram_docker.sh"
+  #  restart: on-failure:5
+  #  depends_on:
+  #    - birdnet-analysis
+  #  volumes_from:
+  #    - birdnet-server 
+  #networks:
+  #    - birdnet
+
+volumes:
+  birdnet-recs:
+
+networks:
+  birdnet:
+    name: birdnet

@@ -1,35 +1,38 @@
 #!/usr/bin/env bash
 # Runs BirdNET-Lite
 # set -x
-source /etc/birdnet/birdnet.conf
+
 # Document this run's birdnet.conf settings
 # Make a temporary file to compare the current birdnet.conf with
 # the birdnet.conf as it was the last time this script was called
 
 my_dir=$HOME/BirdNET-Pi/scripts
+config_dir=$HOME/BirdNET-Pi/config
 
-if [ -z ${THIS_RUN} ];then THIS_RUN=$my_dir/thisrun.txt;fi
-[ -f ${THIS_RUN} ] || touch ${THIS_RUN} && chmod g+w ${THIS_RUN}
-if [ -z ${LAST_RUN} ];then LAST_RUN=$my_dir/lastrun.txt;fi
-[ -z ${LATITUDE} ] && echo "LATITUDE not set, exiting 1" && exit 1
-[ -z ${LONGITUDE} ] && echo "LONGITUDE not set, exiting 1" && exit 1
-make_thisrun() {
-  sleep .4
-  awk '!/#/ && !/^$/ {print}' /etc/birdnet/birdnet.conf \
-    > >(tee "${THIS_RUN}")
-  sleep .5
-}
-make_thisrun &> /dev/null
-if ! diff ${LAST_RUN} ${THIS_RUN};then
-  echo "The birdnet.conf file has changed"
-  if grep REC <(diff $LAST_RUN $THIS_RUN);then
-    echo "Recording element changed -- restarting 'birdnet_recording.service'"
-    sudo systemctl stop birdnet_recording.service
-    sudo rm -rf ${RECS_DIR}/$(date +%B-%Y/%d-%A)/*
-    sudo systemctl start birdnet_recording.service
-  fi
-  cat ${THIS_RUN} > ${LAST_RUN}
-fi
+source $config_dir/birdnet.conf
+
+#if [ -z ${THIS_RUN} ];then THIS_RUN=$config_dir/thisrun.txt;fi
+#[ -f ${THIS_RUN} ] || touch ${THIS_RUN} && chmod g+w ${THIS_RUN}
+#if [ -z ${LAST_RUN} ];then LAST_RUN=$config_dir/lastrun.txt;fi
+#[ -z ${LATITUDE} ] && echo "LATITUDE not set, exiting 1" && exit 1
+#[ -z ${LONGITUDE} ] && echo "LONGITUDE not set, exiting 1" && exit 1
+#make_thisrun() {
+#  sleep .4
+#  awk '!/#/ && !/^$/ {print}' $config_dir/birdnet.conf \
+#    > >(tee "${THIS_RUN}")
+#  sleep .5
+#}
+#make_thisrun &> /dev/null
+#if ! diff ${LAST_RUN} ${THIS_RUN};then
+#  echo "The birdnet.conf file has changed"
+#  if grep REC <(diff $LAST_RUN $THIS_RUN);then
+#    echo "Recording element changed -- restarting 'birdnet_recording.service'"
+#    sudo systemctl stop birdnet_recording.service
+#    sudo rm -rf ${RECS_DIR}/$(date +%B-%Y/%d-%A)/*
+#    sudo systemctl start birdnet_recording.service
+#  fi
+#  cat ${THIS_RUN} > ${LAST_RUN}
+#fi
 
 INCLUDE_LIST="$HOME/BirdNET-Pi/include_species_list.txt"
 EXCLUDE_LIST="$HOME/BirdNET-Pi/exclude_species_list.txt"
@@ -99,7 +102,7 @@ run_analysis() {
 
   for i in "${files[@]}";do
     [ ! -f ${1}/${i} ] && continue
-    echo "${1}/${i}" > $HOME/BirdNET-Pi/analyzing_now.txt
+    echo "${1}/${i}" > $HOME/BirdNET-Pi/config/analyzing_now.txt
     [ -z ${RECORDING_LENGTH} ] && RECORDING_LENGTH=15
     echo "RECORDING_LENGTH set to ${RECORDING_LENGTH}"
     until [ -z "$(lsof -t ${1}/${i})" ];do
@@ -171,9 +174,9 @@ run_birdnet() {
   run_analysis "${1}"
 }
 
-until grep 5050 <(netstat -tulpn 2>&1) &> /dev/null 2>&1;do
-  sleep 1
-done
+#until grep 5050 <(netstat -tulpn 2>&1) &> /dev/null 2>&1;do
+#  sleep 1
+#done 
 
 if [ $(find ${RECS_DIR}/StreamData -maxdepth 1 -name '*wav' 2>/dev/null| wc -l) -gt 0 ];then
   find $RECS_DIR -maxdepth 1 -name '*wav' -type f -size 0 -delete
